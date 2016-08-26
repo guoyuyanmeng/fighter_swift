@@ -10,16 +10,25 @@ import UIKit
 
 class ViewController: UIViewController {
 
+    var label : UILabel!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
+        self.title = "demo";
+        
     }
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
-
+    
+    
+    func initSuViews() {
+    
+        
+    }
 
 }
 
