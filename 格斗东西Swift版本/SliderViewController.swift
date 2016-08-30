@@ -122,6 +122,9 @@ class SliderViewController: UIViewController, UITableViewDataSource, UITableView
         self.avatarBtn.layer.masksToBounds = true
         self.avatarBtn.layer.cornerRadius = 40;
         
+        //
+        self.nameLabel.textColor = UIColor.colcorWithHex(0x505050)
+        
         // 设置身高体重字体颜色
         self.heightLabel.textColor = UIColor.colcorWithHex(0xb4b4b4)
         self.weightLabel.textColor = UIColor.colcorWithHex(0xb4b4b4)
@@ -220,12 +223,15 @@ class SliderViewController: UIViewController, UITableViewDataSource, UITableView
         
     }
     
+    // MARK: - setter
+    
     
     // MARK: - Adepter
     
     func adepter() {
     
-        if LoginUserData {
+        if UserBean.isLogin() {
+            
             
         }
         
@@ -233,7 +239,23 @@ class SliderViewController: UIViewController, UITableViewDataSource, UITableView
     
     // 适配用户登录信息
     func headerViewAdepter() {
-    
+        
+        let loginUser:UserBean? = UserBean.loginUser()
+        
+        if (loginUser != nil) {
+            
+            self.nameLabel.text = loginUser?.username
+            self.ageLabel.text = loginUser!.age() as String
+            self.sexLabel.text = loginUser?.sex
+            self.weightLabel.text = loginUser?.weight
+            self.heightLabel.text = loginUser?.height
+            
+            self.avatarBtn.setBackgroundImage(UIImage.init(named: loginUser!.headpic!), forState: UIControlState.Normal)
+        }else {
+        
+            self.avatarBtn.setBackgroundImage(UIImage.init(named: "头像-空"), forState: UIControlState.Normal)
+        }
+        
     }
     
     
@@ -242,6 +264,13 @@ class SliderViewController: UIViewController, UITableViewDataSource, UITableView
     
     func wxLoginCallback (noti: NSNotification) {
         
+        let msg:NSString = noti.object as! NSString
+        
+        // 退出登录
+        if msg.isEqualToString("SUCESS") {
+            self.setLoginedView()
+            self.headerViewAdepter()
+        }
     }
     
     func phoneLoginedCallback (noti: NSNotification) {
@@ -250,7 +279,9 @@ class SliderViewController: UIViewController, UITableViewDataSource, UITableView
         // 退出登录
         if msg.isEqualToString("LOGOUT") {
             self.setUnloginView()
-        }else {// 登录成功
+        }else {
+            
+            // 登录成功
             self.setLoginedView()
             self.headerViewAdepter()
             
@@ -307,7 +338,7 @@ class SliderViewController: UIViewController, UITableViewDataSource, UITableView
     
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         
-        let cell = tableView.dequeueReusableCellWithIdentifier("reuseIdentifier", forIndexPath: indexPath)
+        let cell = tableView.dequeueReusableCellWithIdentifier("FTLabelsCell", forIndexPath: indexPath)
         
         return cell
     }
