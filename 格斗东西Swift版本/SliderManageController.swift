@@ -41,6 +41,23 @@ enum SliderManageControllerState {
     case openWide // Slider view entirely visible
 }
 
+var sliderActionBlock: (() -> (FTDynamicsSliderDirection))?
+
+
+
+func sliderDirectionIsNonMasked(sliderDirection:FTDynamicsSliderDirection) -> BooleanType {
+    switch sliderDirection {
+    case FTDynamicsSliderDirection.None
+    case Top
+    case Left
+    case Bottom
+    case Right
+        return true
+    defaul:
+        return false
+    }
+}
+
 
 
 class SliderManageController: UIViewController {
@@ -57,5 +74,6 @@ class SliderManageController: UIViewController {
     
     // 设置主界面点击或者滑动弹出用户中心的响应区域宽度
     var openSliderWith:Float?
+    
     
 }
