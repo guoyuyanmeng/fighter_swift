@@ -10,22 +10,24 @@ import Foundation
 import UIKit
 
 
+
+// MARK: - prepare
 /**
  The drawer direction defines the direction that a `SliderManageController` instance's `paneView` can be opened in.
  
  The values can be masked in some (but not all) cases. See the parameters of individual methods to ensure compatibility with the `MSDynamicsDrawerDirection` that is being passed.
  */
-struct FTDynamicsSliderDirection : OptionSetType {
-    let rawValue: Int
+struct SliderDirectionOption : OptionSetType {
+    let rawValue: UInt
     
-    init(rawValue: Int) { self.rawValue = rawValue }
-    static let  None       = FTDynamicsSliderDirection(rawValue: 0)
-    static let  Top        = FTDynamicsSliderDirection(rawValue: 1)
-    static let  Left       = FTDynamicsSliderDirection(rawValue: 2)
-    static let  Bottom     = FTDynamicsSliderDirection(rawValue: 4)
-    static let  Right      = FTDynamicsSliderDirection(rawValue: 8)
-    static let  Horizontal:FTDynamicsSliderDirection = [Left, Right]
-    static let  Vertical:FTDynamicsSliderDirection   = [Top, Bottom]
+//    internal init(rawValue: UInt) //{ self.rawValue = rawValue }
+    static let  None       = SliderDirectionOption(rawValue: 0)
+    static let  Top        = SliderDirectionOption(rawValue: 1 << 0)
+    static let  Left       = SliderDirectionOption(rawValue: 2 << 1)
+    static let  Bottom     = SliderDirectionOption(rawValue: 4 << 2)
+    static let  Right      = SliderDirectionOption(rawValue: 8 << 3)
+    static let  Horizontal:SliderDirectionOption = [Left, Right]
+    static let  Vertical:SliderDirectionOption   = [Top, Bottom]
 }
 
 
@@ -41,25 +43,72 @@ enum SliderManageControllerState {
     case openWide // Slider view entirely visible
 }
 
-var sliderActionBlock: (() -> (FTDynamicsSliderDirection))?
 
-
-
-func sliderDirectionIsNonMasked(sliderDirection:FTDynamicsSliderDirection) -> BooleanType {
+func SliderDirectionIsNonMasked(sliderDirection:SliderDirectionOption) -> BooleanType {
+    
     switch sliderDirection {
-    case FTDynamicsSliderDirection.None
-    case Top
-    case Left
-    case Bottom
-    case Right
+    case  [.None],[.Top],[.Left],[.Bottom],[.Right]:
         return true
-    defaul:
+    default:
         return false
+    }
+    
+}
+
+
+func SliderDirectionIsCardinal(sliderDirection:SliderDirectionOption) -> BooleanType {
+    
+    switch sliderDirection {
+    case  [.Top],[.Left],[.Bottom],[.Right]:
+        return true
+    default:
+        return false
+    }
+    
+}
+
+func SliderDirectionIsValid(sliderDirection:SliderDirectionOption) -> BooleanType {
+    
+    switch sliderDirection {
+    case [.None],[.Top],[.Left],[.Bottom],[.Right],[.Horizontal],[.Vertical]:
+        return true
+    default:
+        return false
+    }
+
+}
+
+//func SliderDirectionActionForMaskedValues(direction:SliderDirectionOption,action:SliderActionBlock) {
+//    
+//    for var currentDirection = SliderDirectionOption.Top ; currentDirection <= SliderDirectionOption.Right ; currentDirection << = 1 {
+//        
+//    }
+//    
+//}
+
+// MARK: - block 
+
+typealias SliderActionBlock = ((SliderDirectionOption) -> ())
+typealias ViewActionBlock =  ((UIView) -> ())
+
+// MARK: - UIview extension
+extension UIView {
+    
+//    func superviewHierarchyAction(viewAction:(UIView)->()) {
+//        
+//        viewAction(self)
+//        self.superview?.superviewHierarchyAction(viewAction)
+//    }
+    
+    func superviewHierarchyAction(viewAction:ViewActionBlock) {
+        
+        viewAction(self)
+        self.superview?.superviewHierarchyAction(viewAction)
     }
 }
 
 
-
+// MARK: - Class
 class SliderManageController: UIViewController {
     
     var shouldAlignStatusBarToPaneView:BooleanType?
@@ -77,3 +126,10 @@ class SliderManageController: UIViewController {
     
     
 }
+
+
+
+
+
+
+

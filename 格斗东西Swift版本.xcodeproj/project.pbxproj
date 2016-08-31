@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		3D07C77A1D6FF08D002CA03A /* UserBean.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D07C7791D6FF08D002CA03A /* UserBean.swift */; };
+		3D11B29D1D7700FC00B4C838 /* MMDrawerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D11B29C1D7700FC00B4C838 /* MMDrawerController.swift */; };
 		3DE486F81D65D11000819D04 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DE486F71D65D11000819D04 /* AppDelegate.swift */; };
 		3DE486FA1D65D11000819D04 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DE486F91D65D11000819D04 /* ViewController.swift */; };
 		3DE486FD1D65D11000819D04 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3DE486FB1D65D11000819D04 /* Main.storyboard */; };
@@ -42,6 +43,7 @@
 
 /* Begin PBXFileReference section */
 		3D07C7791D6FF08D002CA03A /* UserBean.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserBean.swift; sourceTree = "<group>"; };
+		3D11B29C1D7700FC00B4C838 /* MMDrawerController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MMDrawerController.swift; sourceTree = "<group>"; };
 		3D500DF11D6EA15500ACBD0D /* PrefixHeader.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PrefixHeader.pch; sourceTree = "<group>"; };
 		3D500DF21D6EE81C00ACBD0D /* Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bridging-Header.h"; sourceTree = SOURCE_ROOT; };
 		3DE486F41D65D11000819D04 /* 格斗东西Swift版本.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "格斗东西Swift版本.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -98,6 +100,14 @@
 			name = bean;
 			sourceTree = "<group>";
 		};
+		3D11B29B1D7700CF00B4C838 /* MMDrawer */ = {
+			isa = PBXGroup;
+			children = (
+				3D11B29C1D7700FC00B4C838 /* MMDrawerController.swift */,
+			);
+			name = MMDrawer;
+			sourceTree = "<group>";
+		};
 		3DE486EB1D65D11000819D04 = {
 			isa = PBXGroup;
 			children = (
@@ -121,6 +131,7 @@
 		3DE486F61D65D11000819D04 /* 格斗东西Swift版本 */ = {
 			isa = PBXGroup;
 			children = (
+				3D11B29B1D7700CF00B4C838 /* MMDrawer */,
 				3D07C7781D6FF069002CA03A /* bean */,
 				3DEF91EC1D6F0E41006E23F2 /* category */,
 				3DE487251D65D27900819D04 /* 侧滑栏 */,
@@ -333,6 +344,7 @@
 				3DE4872A1D65D3B000819D04 /* SliderViewController.swift in Sources */,
 				3DE486FA1D65D11000819D04 /* ViewController.swift in Sources */,
 				3DE486F81D65D11000819D04 /* AppDelegate.swift in Sources */,
+				3D11B29D1D7700FC00B4C838 /* MMDrawerController.swift in Sources */,
 				3DEF91EB1D6EEF4D006E23F2 /* MacroDefinition.swift in Sources */,
 				3DE4872C1D65D3EE00819D04 /* MainViewController.swift in Sources */,
 				3DEF91EE1D6F13B0006E23F2 /* UIColor+Extension.swift in Sources */,
