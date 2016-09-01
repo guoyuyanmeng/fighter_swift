@@ -8,7 +8,7 @@
 
 import Foundation
 import UIKit
-
+import QuartzCore
 
 
 
@@ -40,7 +40,7 @@ import UIKit
  - Displaying a minimum drawer width
  - Support container view controllers other than `UINavigationController` as the center view controller.
  */
-enum MMDrawerSlide {
+enum MMDrawerSide {
     case none
     case left
     case right
@@ -78,12 +78,117 @@ enum MMDrawerOpenCenterInteractionMode {
     case NavigationBarOnly
 }
 
-typealias MMDrawerControllerDrawerVisualStateBlock = ((drawerController:MMDrawerController , drawerSide:MMDrawerSlide , percentVisible:CGFloat ) -> ())
+
+// MARK: - 常量
+let MMDrawerDefaultWidth:Float = 280.0;
+let MMDrawerDefaultAnimationVelocity:Float = 840.0;
+
+let MMDrawerDefaultFullAnimationDelay:NSTimeInterval = 0.10;
+
+let MMDrawerDefaultBounceDistance:Float = 50.0;
+
+let MMDrawerDefaultBounceAnimationDuration:NSTimeInterval = 0.2;
+let MMDrawerDefaultSecondBounceDistancePercentage:Float = 0.25;
+
+let MMDrawerDefaultShadowRadius:Float = 10.0;
+let MMDrawerDefaultShadowOpacity:Float = 0.8;
+
+let MMDrawerMinimumAnimationDuration:NSTimeInterval = 0.15;
+
+let MMDrawerBezelRange:Float = 20.0;
+
+let MMDrawerPanVelocityXAnimationThreshold:Float = 200.0;
+
+/** The amount of overshoot that is panned linearly. The remaining percentage nonlinearly asymptotes to the max percentage. */
+let MMDrawerOvershootLinearRangePercentage:Float = 0.75;
+
+/** The percent of the possible overshoot width to use as the actual overshoot percentage. */
+let MMDrawerOvershootPercentage:Float = 0.1;
+
+let MMDrawerLeftDrawerKey:String = "MMDrawerLeftDrawer"
+let MMDrawerRightDrawerKey:String = "MMDrawerRightDrawer"
+let MMDrawerCenterKey:String = "MMDrawerCenter"
+let MMDrawerOpenSideKey:String = "MMDrawerOpenSide"
+
+
+func bounceKeyFrameAnimationForDistanceOnView(distance:Float, view:UIView?) -> (CAKeyframeAnimation) {
+    let factors:[Float] = [0, 32, 60, 83, 100, 114, 124, 128, 128, 124, 114, 100, 83, 60, 32,
+    0, 24, 42, 54, 62, 64, 62, 54, 42, 24, 0, 18, 28, 32, 28, 18, 0]
+    
+    var values:[Float] = []
+    
+    for i:Int in 0 ..< 32  {
+        
+        let positionOffset:Float = factors[i]/128.0 * distance + Float(CGRectGetMaxX(view!.bounds))
+        values.append(positionOffset)
+    }
+    
+    let animation:CAKeyframeAnimation = CAKeyframeAnimation.init(keyPath: "position.x")
+    animation.repeatCount = 1;
+    animation.duration = 0.8
+    animation.fillMode = kCAFillModeForwards
+    animation.values = values
+    animation.removedOnCompletion = true
+    animation.autoreverses = false
+    
+    return animation
+}
+
+// MARK: - 自定义block类型
+
+typealias MMDrawerControllerDrawerVisualStateBlock = ((drawerController:MMDrawerController? , drawerSide:MMDrawerSide , percentVisible:CGFloat ) -> ())?
+typealias MMDrawerGestureShouldRecognizeTouchBlock =  ((drawerController:MMDrawerController?, gesture:UIGestureRecognizer?, touch:UITouch?) -> (BooleanType))?
+typealias MMDrawerGestureCompletionBlock = ((drawerController:MMDrawerController?, gesture:UIGestureRecognizer?) -> ())?
+
+// MARK: - MMDrawerCenterContainerView
+class MMDrawerCenterContainerView:UIView {
+
+    var centerInteractionMode:MMDrawerOpenCenterInteractionMode?
+    var openSide:MMDrawerSide?
+    
+    
+    override func hitTest(point: CGPoint, withEvent event: UIEvent?) -> UIView? {
+        var hitView:UIView? = super.hitTest(point, withEvent: event)
+        if hitView != nil && self.openSide != MMDrawerSide.none {
+            let navBar:UINavigationBar? = self.navigationBarContainedWithinSubviewsOfView(self)
+            let navBarFrame:CGRect = navBar!.convertRect(navBar!.bounds, toView: self)
+            
+            if (self.centerInteractionMode == MMDrawerOpenCenterInteractionMode.NavigationBarOnly && CGRectContainsPoint(navBarFrame, point)) ||  self.centerInteractionMode == MMDrawerOpenCenterInteractionMode.None {
+                hitView = nil;
+            }
+        }
+        return hitView
+    }
+    
+    func navigationBarContainedWithinSubviewsOfView(view:UIView) ->(UINavigationBar){
+        
+        var navBar:UINavigationBar?
+        for subview in view.subviews {
+        
+            if view.isKindOfClass(UINavigationBar) {
+                navBar = view as? UINavigationBar
+                break
+            }else {
+                
+                navBar = self.navigationBarContainedWithinSubviewsOfView(subview)
+                if navBar != nil {
+                    break;
+                }
+            }
+            
+        }
+        
+        return navBar!
+    
+    }
+}
+
+// MARK: - pulic properties
 
 class MMDrawerController:UIViewController {
     
     
-    // MARK: - pulic properties
+    
     /**
      The center view controller.
      
@@ -154,7 +259,7 @@ class MMDrawerController:UIViewController {
      
      Note this value will change as soon as a pan gesture opens a drawer, or when a open/close animation is finished.
      */
-    var openSide:MMDrawerSlide?
+//    var openSide:MMDrawerSide?
     
     /**
      How a user is allowed to open a drawer using gestures.
@@ -241,6 +346,27 @@ class MMDrawerController:UIViewController {
     var panVelocityXAnimationThreshold:Float?
     
     
+    
+    // MARK: - internal property
+    
+    var _maximumRightDrawerWidth:Float?
+    var _maximumLeftDrawerWidth:Float?
+    var _statusBarViewBackgroundColor:UIColor?
+    
+    var openSide:MMDrawerSide?
+    
+     // how to  decalare readwrite property
+    
+    var childControllerContainerView:UIView?
+    var centerContainerView:MMDrawerCenterContainerView?
+    var dummyStatusBarView:UIView?
+    
+    var startingPanRect:CGRect?
+    var drawerVisualState:MMDrawerControllerDrawerVisualStateBlock?
+    var gestureShouldRecognizeTouch:MMDrawerGestureShouldRecognizeTouchBlock?
+    var gestureCompletion:MMDrawerGestureCompletionBlock?
+    var animatingDrawer:BooleanType?
+    
     // MARK: - init function
     
     ///---------------------------------------
@@ -259,11 +385,11 @@ class MMDrawerController:UIViewController {
     
     
     
-    convenience init(centerViewcontroller:UIViewController, leftDrawerViewController:UIViewController, rightDrawerViewController:UIViewController) {
+     convenience init(centerViewcontroller:UIViewController, leftDrawerViewController:UIViewController, rightDrawerViewController:UIViewController) {
         
         self.init()
         
-        self.centerViewController =  centerViewcontroller
+        self.centerViewController = centerViewcontroller
         self.leftViewController =  leftDrawerViewController
         self.rightViewController = rightDrawerViewController
         
@@ -307,9 +433,10 @@ class MMDrawerController:UIViewController {
      @param drawerSide The `MMDrawerSide` to toggle. This value cannot be `MMDrawerSideNone`.
      @param animated Determines whether the `drawer` should be toggle animated.
      @param completion The block that is called when the toggle is complete, or if no toggle took place at all.
-     
      */
-    -(void)toggleDrawerSide:(MMDrawerSide)drawerSide animated:(BOOL)animated completion:(void(^)(BOOL finished))completion;
+    func toggleDrawerSide(drawerSide:MMDrawerSide, animated:BooleanType, completion:(finished:BooleanType) ->()) {
+        
+    }
     
     /**
      Closes the open drawer.
@@ -318,7 +445,9 @@ class MMDrawerController:UIViewController {
      @param completion The block that is called when the close is complete
      
      */
-    -(void)closeDrawerAnimated:(BOOL)animated completion:(void(^)(BOOL finished))completion;
+    func closeDrawerAnimated(animated:BooleanType, completion:(finished:BooleanType) ->()) {
+    
+    }
     
     /**
      Opens the `drawer` passed in.
@@ -328,7 +457,9 @@ class MMDrawerController:UIViewController {
      @param completion The block that is called when the toggle is open.
      
      */
-    -(void)openDrawerSide:(MMDrawerSide)drawerSide animated:(BOOL)animated completion:(void(^)(BOOL finished))completion;
+    func openDrawerSide(drawerSide:MMDrawerSide, animated:BooleanType, completion:(finished:BooleanType) ->()? ) {
+    
+    }
     
     ///---------------------------------------
     /// @name Setting a new Center View Controller
@@ -344,7 +475,9 @@ class MMDrawerController:UIViewController {
      @param completion The block called when the animation is finsihed.
      
      */
-    -(void)setCenterViewController:(UIViewController *)centerViewController withCloseAnimation:(BOOL)closeAnimated completion:(void(^)(BOOL finished))completion;
+    func setCenterViewController(centerViewController:UIViewController?, closeAnimated:BooleanType, completion:(finished:BooleanType) ->()) {
+    
+    }
     
     /**
      Sets the new `centerViewController`.
@@ -356,7 +489,10 @@ class MMDrawerController:UIViewController {
      @param completion The block called when the animation is finsihed.
      
      */
-    -(void)setCenterViewController:(UIViewController *)newCenterViewController withFullCloseAnimation:(BOOL)fullCloseAnimated completion:(void(^)(BOOL finished))completion;
+    func setCenterViewController(newCenterViewController:UIViewController?, fullCloseAnimated:BooleanType, completion:(finished:BooleanType) ->()) {
+    
+    }
+
     
     ///---------------------------------------
     /// @name Animating the Width of a Drawer
@@ -372,7 +508,10 @@ class MMDrawerController:UIViewController {
      @param completion The block called when the animation is finished.
      
      */
-    -(void)setMaximumLeftDrawerWidth:(CGFloat)width animated:(BOOL)animated completion:(void(^)(BOOL finished))completion;
+    func setMaximumLeftDrawerWidth(width:Float, animated:BooleanType, completion:(finished:BooleanType) ->()) {
+    
+    }
+
     
     /**
      Sets the maximum width of the right drawer view controller.
@@ -384,8 +523,9 @@ class MMDrawerController:UIViewController {
      @param completion The block called when the animation is finished.
      
      */
-    -(void)setMaximumRightDrawerWidth:(CGFloat)width animated:(BOOL)animated completion:(void(^)(BOOL finished))completion;
+    func setMaximumRightDrawerWidth(width:Float, animated:BooleanType, completion:(finished:BooleanType) ->()) {
     
+    }
     ///---------------------------------------
     /// @name Previewing a Drawer
     ///---------------------------------------
@@ -397,7 +537,10 @@ class MMDrawerController:UIViewController {
      @param completion The block called when the animation is finsihed.
      
      */
-    -(void)bouncePreviewForDrawerSide:(MMDrawerSide)drawerSide completion:(void(^)(BOOL finished))completion;
+    func bouncePreviewForDrawerSide(drawerSide:MMDrawerSide, completion:(finished:BooleanType) ->()) {
+        
+    }
+
     
     /**
      Bounce preview for the specified `drawerSide`.
@@ -407,7 +550,10 @@ class MMDrawerController:UIViewController {
      @param completion The block called when the animation is finsihed.
      
      */
-    -(void)bouncePreviewForDrawerSide:(MMDrawerSide)drawerSide distance:(CGFloat)distance completion:(void(^)(BOOL finished))completion;
+    func bouncePreviewForDrawerSide(drawerSide:MMDrawerSide, distance:Float, completion:(finished:BooleanType) ->()) {
+        
+    }
+
     
     ///---------------------------------------
     /// @name Custom Drawer Animations
@@ -426,7 +572,9 @@ class MMDrawerController:UIViewController {
      
      @param drawerVisualStateBlock A block object to be called that allows the implementer to update visual state properties on the drawer. `percentVisible` represents the amount of the drawer space that is current visible, with drawer space being defined as the edge of the screen to the maxmimum drawer width. Note that you do have access to the drawerController, which will allow you to update things like the anchor point of the side drawer layer.
      */
-    -(void)setDrawerVisualStateBlock:(void(^)(MMDrawerController * drawerController, MMDrawerSide drawerSide, CGFloat percentVisible))drawerVisualStateBlock;
+    func setDrawerVisualStateBlock(drawerVisualStateBlock: (MMDrawerController,MMDrawerSide,Float) -> ()?) {
+    
+    }
     
     ///---------------------------------------
     /// @name Gesture Completion Handling
@@ -439,7 +587,9 @@ class MMDrawerController:UIViewController {
      
      @param gestureCompletionBlock A block object to be called that allows the implementer be notified when a gesture action has been completed.
      */
-    -(void)setGestureCompletionBlock:(void(^)(MMDrawerController * drawerController, UIGestureRecognizer * gesture))gestureCompletionBlock;
+    func setGestureCompletionBlock(gestureCompletionBlock: (MMDrawerController,UIGestureRecognizer) -> ()?) {
+    
+    }
     
     ///---------------------------------------
     /// @name Custom Gesture Handler
@@ -454,13 +604,94 @@ class MMDrawerController:UIViewController {
      
      @param gestureShouldRecognizeTouchBlock A block object to be called to determine if the given `touch` should be recognized by the given gesture.
      */
-    -(void)setGestureShouldRecognizeTouchBlock:(BOOL(^)(MMDrawerController * drawerController, UIGestureRecognizer * gesture, UITouch * touch))gestureShouldRecognizeTouchBlock;
+    func setGestureShouldRecognizeTouchBlock(gestureShouldRecognizeTouchBlock:(MMDrawerController,UIGestureRecognizer,UITouch) -> (BooleanType)) {
+    
+    }
 
     
     
     // MARK: -  getter setter 
+    func setRightDrawerViewController(rightDrawerViewController:UIViewController) {
     
-    // MARK: - 
+    }
+    
+    func setLeftDrawerViewController(leftDrawerViewController:UIViewController) {
+        
+    }
+    
+    func setDrawerViewController(viewController:UIViewController?, drawerSide:MMDrawerSide){
+        
+        let currentSideViewController:UIViewController? = self.sideDrawerViewControllerForSide(drawerSide)
+        
+        if currentSideViewController == viewController {
+            return
+        }
+        
+        if currentSideViewController != nil {
+            
+            currentSideViewController?.beginAppearanceTransition(false , animated: false)
+            currentSideViewController?.view.removeFromSuperview()
+            currentSideViewController?.endAppearanceTransition()
+            currentSideViewController?.willMoveToParentViewController(nil)
+            currentSideViewController?.removeFromParentViewController()
+            
+        }
+        
+        var autoResizingMask:UIViewAutoresizing = UIViewAutoresizing.None
+        if drawerSide == MMDrawerSide.left {
+            self.leftViewController = viewController
+            autoResizingMask = [UIViewAutoresizing.FlexibleRightMargin,UIViewAutoresizing.FlexibleHeight]
+        }else if drawerSide == MMDrawerSide.right {
+            self.leftViewController = viewController
+            autoResizingMask = [UIViewAutoresizing.FlexibleLeftMargin,UIViewAutoresizing.FlexibleHeight]
+        }
+        
+        
+        if viewController != nil {
+            
+            self.addChildViewController(viewController!)
+            
+            if self.openSide == drawerSide && self.chil {
+                
+            }
+        }
+    }
+
+   
+    func setCenterViewController(centerViewController:UIViewController){
+    
+         [self setCenterViewController:centerViewController animated:NO];
+    }
+    
+
+    
+    // MARK: - helper
+    
+    func sideDrawerViewControllerForSide(drawerSide:MMDrawerSide) -> UIViewController {
+        var sideDrawerViewController:UIViewController?
+        if drawerSide != MMDrawerSide.none {
+            sideDrawerViewController = self.childViewControllerForSide(drawerSide)
+        }
+        
+        return sideDrawerViewController!
+    }
+    
+    func childViewControllerForSide(drawerSide:MMDrawerSide) ->UIViewController {
+        var childViewController:UIViewController?
+        switch  drawerSide {
+        case .left:
+            childViewController = self.leftViewController
+            break
+        case .right:
+            childViewController = self.rightViewController
+            break
+        case .none:
+            childViewController = self.centerViewController
+            break
+        }
+        return childViewController!
+    }
+    
     // MARK: - 
     // MARK: - 
     // MARK: - 
